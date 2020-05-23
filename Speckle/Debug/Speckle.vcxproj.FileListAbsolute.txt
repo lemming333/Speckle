@@ -1,0 +1,2 @@
+C:\Users\lemmi\source\repos\Speckle\Speckle\Debug\Speckle.exe
+C:\Users\lemmi\source\repos\Speckle\Speckle\Debug\Speckle.pdb
