@@ -14,12 +14,19 @@ using namespace std;
 HINSTANCE hInst;                                // current instance
 WCHAR szTitle[MAX_LOADSTRING];                  // The title bar text
 WCHAR szWindowClass[MAX_LOADSTRING];            // the main window class name
+HWND hWnd;                                      // the main window handle
+HDC hDC;                                        // the main window device context
+int pixelFormat;                                // the pixel format for the main window
+HGLRC hGLRC;                                    // the OpenGL context handle
+
 
 // Forward declarations of functions included in this code module:
 ATOM                MyRegisterClass(HINSTANCE hInstance);
 BOOL                InitInstance(HINSTANCE, int);
 LRESULT CALLBACK    WndProc(HWND, UINT, WPARAM, LPARAM);
 INT_PTR CALLBACK    About(HWND, UINT, WPARAM, LPARAM);
+bool                OpenOpenGLContext(HDC& _hDC, HWND _hWnd, int& _pixelFormat, HGLRC& _hGLRC);
+void                CloseOpenGLContext(HDC _hDC, HGLRC _hGLRC);
 
 int APIENTRY wWinMain(_In_ HINSTANCE hInstance,
                      _In_opt_ HINSTANCE hPrevInstance,
@@ -28,10 +35,6 @@ int APIENTRY wWinMain(_In_ HINSTANCE hInstance,
 {
     UNREFERENCED_PARAMETER(hPrevInstance);
     UNREFERENCED_PARAMETER(lpCmdLine);
-
-    CQuat testQuat1;
-    CQuat testQuat2;
-    cout << "Sum Quat " << testQuat1.add(testQuat2) << endl;
 
     // Initialize global strings
     LoadStringW(hInstance, IDS_APP_TITLE, szTitle, MAX_LOADSTRING);
@@ -43,6 +46,8 @@ int APIENTRY wWinMain(_In_ HINSTANCE hInstance,
     {
         return FALSE;
     }
+
+    OpenOpenGLContext(hDC, hWnd, pixelFormat, hGLRC);
 
     HACCEL hAccelTable = LoadAccelerators(hInstance, MAKEINTRESOURCE(IDC_SPECKLE));
 
@@ -57,6 +62,8 @@ int APIENTRY wWinMain(_In_ HINSTANCE hInstance,
             DispatchMessage(&msg);
         }
     }
+
+    CloseOpenGLContext(hDC, hGLRC);
 
     return (int) msg.wParam;
 }
@@ -74,7 +81,7 @@ ATOM MyRegisterClass(HINSTANCE hInstance)
 
     wcex.cbSize = sizeof(WNDCLASSEX);
 
-    wcex.style          = CS_HREDRAW | CS_VREDRAW;
+    wcex.style          = CS_HREDRAW | CS_VREDRAW | CS_OWNDC;
     wcex.lpfnWndProc    = WndProc;
     wcex.cbClsExtra     = 0;
     wcex.cbWndExtra     = 0;
@@ -102,8 +109,8 @@ ATOM MyRegisterClass(HINSTANCE hInstance)
 BOOL InitInstance(HINSTANCE hInstance, int nCmdShow)
 {
    hInst = hInstance; // Store instance handle in our global variable
-
-   HWND hWnd = CreateWindowW(szWindowClass, szTitle, WS_OVERLAPPEDWINDOW,
+ 
+   hWnd = CreateWindowW(szWindowClass, szTitle, WS_OVERLAPPEDWINDOW,
       CW_USEDEFAULT, 0, CW_USEDEFAULT, 0, nullptr, nullptr, hInstance, nullptr);
 
    if (!hWnd)
@@ -111,6 +118,7 @@ BOOL InitInstance(HINSTANCE hInstance, int nCmdShow)
       return FALSE;
    }
 
+   // put up the main window
    ShowWindow(hWnd, nCmdShow);
    UpdateWindow(hWnd);
 
@@ -153,6 +161,10 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
             PAINTSTRUCT ps;
             HDC hdc = BeginPaint(hWnd, &ps);
             // TODO: Add any drawing code that uses hdc here...
+            CQuat testQuat1;
+            CQuat testQuat2;
+            cout << "Sum Quat " << testQuat1.add(testQuat2) << endl;
+            
             EndPaint(hWnd, &ps);
         }
         break;
@@ -183,4 +195,42 @@ INT_PTR CALLBACK About(HWND hDlg, UINT message, WPARAM wParam, LPARAM lParam)
         break;
     }
     return (INT_PTR)FALSE;
+}
+
+bool OpenOpenGLContext(HDC& _hDC, HWND _hWnd, int& _pixelFormat, HGLRC& _hGLRC)
+{
+    // set up OpenGL context - must make a separate context for each thread (and its window)
+    PIXELFORMATDESCRIPTOR pfd =
+    {
+        sizeof(PIXELFORMATDESCRIPTOR),
+        1,
+        PFD_DRAW_TO_WINDOW | PFD_SUPPORT_OPENGL | PFD_DOUBLEBUFFER,    // Flags
+        PFD_TYPE_RGBA,        // The kind of framebuffer. RGBA or palette.
+        32,                   // Colordepth of the framebuffer.
+        0, 0, 0, 0, 0, 0,
+        0,
+        0,
+        0,
+        0, 0, 0, 0,
+        24,                   // Number of bits for the depthbuffer
+        8,                    // Number of bits for the stencilbuffer
+        0,                    // Number of Aux buffers in the framebuffer.
+        PFD_MAIN_PLANE,
+        0,
+        0, 0, 0
+    };
+    hDC = GetDC(_hWnd);
+    pixelFormat = ChoosePixelFormat(hDC, &pfd);
+    if (pixelFormat == 0) { return false; }
+    SetPixelFormat(hDC, pixelFormat, &pfd);
+    hGLRC = wglCreateContext(hDC); // create openGL context
+    wglMakeCurrent(hDC, hGLRC);
+    return true;
+}
+
+void CloseOpenGLContext(HDC _hDC, HGLRC _hGLRC)
+{
+    // delete OpenGL context
+    wglMakeCurrent(_hDC, NULL);
+    wglDeleteContext(_hGLRC);
 }
