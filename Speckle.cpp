@@ -1,6 +1,10 @@
 // Speckle.cpp : Defines the entry point for the application.
 //
 
+#include <KHR/khrplatform.h>
+#include <GL/glcorearb.h>
+#include <GL/glext.h>
+
 #include <iostream>
 #include "framework.h"
 #include "Speckle.h"
@@ -8,7 +12,7 @@
 
 using namespace std;
 
-#define MAX_LOADSTRING 100
+constexpr auto MAX_LOADSTRING = 100;
 
 // Global Variables:
 HINSTANCE hInst;                                // current instance
@@ -27,6 +31,7 @@ LRESULT CALLBACK    WndProc(HWND, UINT, WPARAM, LPARAM);
 INT_PTR CALLBACK    About(HWND, UINT, WPARAM, LPARAM);
 bool                OpenOpenGLContext(HDC& _hDC, HWND _hWnd, int& _pixelFormat, HGLRC& _hGLRC);
 void                CloseOpenGLContext(HDC _hDC, HGLRC _hGLRC);
+void*               GetAnyGLFuncAddress(const char* name);
 
 int APIENTRY wWinMain(_In_ HINSTANCE hInstance,
                      _In_opt_ HINSTANCE hPrevInstance,
@@ -42,12 +47,12 @@ int APIENTRY wWinMain(_In_ HINSTANCE hInstance,
     MyRegisterClass(hInstance);
 
     // Perform application initialization:
+    OpenOpenGLContext(hDC, hWnd, pixelFormat, hGLRC);
     if (!InitInstance (hInstance, nCmdShow))
     {
         return FALSE;
     }
 
-    OpenOpenGLContext(hDC, hWnd, pixelFormat, hGLRC);
 
     HACCEL hAccelTable = LoadAccelerators(hInstance, MAKEINTRESOURCE(IDC_SPECKLE));
 
@@ -160,11 +165,42 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
         {
             PAINTSTRUCT ps;
             HDC hdc = BeginPaint(hWnd, &ps);
-            // TODO: Add any drawing code that uses hdc here...
-            CQuat testQuat1;
-            CQuat testQuat2;
-            cout << "Sum Quat " << testQuat1.add(testQuat2) << endl;
-            
+
+            // get functions
+            PFNGLCLEARCOLORPROC glClearColor = (PFNGLCLEARCOLORPROC)GetAnyGLFuncAddress("glClearColor");
+            PFNGLCLEARPROC glClear = (PFNGLCLEARPROC)GetAnyGLFuncAddress("glClear");
+            PFNGLUSEPROGRAMPROC glUseProgram = (PFNGLUSEPROGRAMPROC)GetAnyGLFuncAddress("glUseProgram");
+            PFNGLBINDBUFFERPROC glBindBuffer = (PFNGLBINDBUFFERPROC)GetAnyGLFuncAddress("glBindBuffer");
+            PFNGLENABLEVERTEXATTRIBARRAYPROC glEnableVertexAttribArray = (PFNGLENABLEVERTEXATTRIBARRAYPROC)GetAnyGLFuncAddress("glEnableVertexAttribArray");
+            PFNGLVERTEXATTRIBPOINTERPROC glVertexAttribPointer = (PFNGLVERTEXATTRIBPOINTERPROC)GetAnyGLFuncAddress("glVertexAttribPointer");
+            PFNGLDRAWARRAYSPROC glDrawArrays = (PFNGLDRAWARRAYSPROC)GetAnyGLFuncAddress("glDrawArrays");
+            PFNGLDISABLEVERTEXATTRIBARRAYPROC glDisableVertexAttribArray = (PFNGLDISABLEVERTEXATTRIBARRAYPROC)GetAnyGLFuncAddress("glDisableVertexAttribArray");
+            PFNGLGENBUFFERSPROC glGenBuffers = (PFNGLGENBUFFERSPROC)(GetAnyGLFuncAddress("glGenBuffers"));
+            PFNGLBUFFERDATAPROC glBufferData = (PFNGLBUFFERDATAPROC)(GetAnyGLFuncAddress("glBufferData"));
+
+            // render
+            const float vertexPositions[] = {
+                0.75f, 0.75f, 0.0f, 1.0f,
+                0.75f, -0.75f, 0.0f, 1.0f,
+                -0.75f, -0.75f, 0.0f, 1.0f,
+            };
+            unsigned int positionBufferObject = 0;
+            glGenBuffers(1, &positionBufferObject);
+            glBindBuffer(GL_ARRAY_BUFFER, positionBufferObject);
+            glBufferData(GL_ARRAY_BUFFER, sizeof(vertexPositions), vertexPositions, GL_STATIC_DRAW);
+            glBindBuffer(GL_ARRAY_BUFFER, 0);
+
+            unsigned int theProgram = 0;
+            glClearColor(0.0f, 0.0f, 0.0f, 0.0f);
+            glClear(GL_COLOR_BUFFER_BIT);
+            glUseProgram(theProgram);
+            glBindBuffer(GL_ARRAY_BUFFER, positionBufferObject);
+            glEnableVertexAttribArray(0);
+            glVertexAttribPointer(0, 4, GL_FLOAT, GL_FALSE, 0, 0);
+            glDrawArrays(GL_TRIANGLES, 0, 3);
+            glDisableVertexAttribArray(0);
+            glUseProgram(0);
+
             EndPaint(hWnd, &ps);
         }
         break;
@@ -233,4 +269,21 @@ void CloseOpenGLContext(HDC _hDC, HGLRC _hGLRC)
     // delete OpenGL context
     wglMakeCurrent(_hDC, NULL);
     wglDeleteContext(_hGLRC);
+}
+
+void* GetAnyGLFuncAddress(const char* name)
+{
+    void* p = (void*)wglGetProcAddress(name);
+    if (p == 0 ||
+        (p == (void*)0x1) || (p == (void*)0x2) || (p == (void*)0x3) ||
+        (p == (void*)-1))
+    {
+        HMODULE module = LoadLibraryA("opengl32.dll");
+        if (module != 0)
+        {
+            p = (void*)GetProcAddress(module, name);
+        }
+    }
+
+    return p;
 }
