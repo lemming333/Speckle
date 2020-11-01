@@ -167,16 +167,7 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
             HDC hdc = BeginPaint(hWnd, &ps);
 
             // get functions
-            PFNGLCLEARCOLORPROC glClearColor = (PFNGLCLEARCOLORPROC)GetAnyGLFuncAddress("glClearColor");
-            PFNGLCLEARPROC glClear = (PFNGLCLEARPROC)GetAnyGLFuncAddress("glClear");
-            PFNGLUSEPROGRAMPROC glUseProgram = (PFNGLUSEPROGRAMPROC)GetAnyGLFuncAddress("glUseProgram");
-            PFNGLBINDBUFFERPROC glBindBuffer = (PFNGLBINDBUFFERPROC)GetAnyGLFuncAddress("glBindBuffer");
-            PFNGLENABLEVERTEXATTRIBARRAYPROC glEnableVertexAttribArray = (PFNGLENABLEVERTEXATTRIBARRAYPROC)GetAnyGLFuncAddress("glEnableVertexAttribArray");
-            PFNGLVERTEXATTRIBPOINTERPROC glVertexAttribPointer = (PFNGLVERTEXATTRIBPOINTERPROC)GetAnyGLFuncAddress("glVertexAttribPointer");
-            PFNGLDRAWARRAYSPROC glDrawArrays = (PFNGLDRAWARRAYSPROC)GetAnyGLFuncAddress("glDrawArrays");
-            PFNGLDISABLEVERTEXATTRIBARRAYPROC glDisableVertexAttribArray = (PFNGLDISABLEVERTEXATTRIBARRAYPROC)GetAnyGLFuncAddress("glDisableVertexAttribArray");
-            PFNGLGENBUFFERSPROC glGenBuffers = (PFNGLGENBUFFERSPROC)(GetAnyGLFuncAddress("glGenBuffers"));
-            PFNGLBUFFERDATAPROC glBufferData = (PFNGLBUFFERDATAPROC)(GetAnyGLFuncAddress("glBufferData"));
+#include "OGLFunctionPointers.h"
 
             // render
             const float vertexPositions[] = {
