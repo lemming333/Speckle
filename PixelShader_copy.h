@@ -6,5 +6,3 @@ void main()\n\
 	outputColor = vec4(1.0f, 1.0f, 1.0f, 1.0f);\n\
 }\n\
 ");
-
-CGlFunctions glFunctions;

@@ -35,7 +35,7 @@ GLuint              CreateProgram(const std::vector<GLuint>& shaderList);
 
 // get functions
 #include "OGLFunctionPointers.h"
-CGlFunctions GlFunctions;
+CGlFunctions * pGlFunctions = NULL;
 HMODULE OpenGlModule;
 
 int APIENTRY wWinMain(_In_ HINSTANCE hInstance,
@@ -57,7 +57,6 @@ int APIENTRY wWinMain(_In_ HINSTANCE hInstance,
     {
         return FALSE;
     }
-
 
     HACCEL hAccelTable = LoadAccelerators(hInstance, MAKEINTRESOURCE(IDC_SPECKLE));
 
@@ -172,7 +171,7 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
             HDC hdc = BeginPaint(hWnd, &ps);
 
             // set viewport
-            GlFunctions.glViewport(0, 0, 100, 100);//(GLsizei)w, (GLsizei)h);
+            pGlFunctions->glViewport(0, 0, 100, 100);//(GLsizei)w, (GLsizei)h);
 
             // allocate vertices
             const float vertexPositions[] = {
@@ -181,22 +180,22 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
                 -0.75f, -0.75f, 0.0f, 1.0f,
             };
             unsigned int positionBufferObject = 0;
-            GlFunctions.glGenBuffers(1, &positionBufferObject);
-            GlFunctions.glBindBuffer(GL_ARRAY_BUFFER, positionBufferObject);
-            GlFunctions.glBufferData(GL_ARRAY_BUFFER, sizeof(vertexPositions), vertexPositions, GL_STATIC_DRAW);
-            GlFunctions.glBindBuffer(GL_ARRAY_BUFFER, 0);
+            pGlFunctions->glGenBuffers(1, &positionBufferObject);
+            pGlFunctions->glBindBuffer(GL_ARRAY_BUFFER, positionBufferObject);
+            pGlFunctions->glBufferData(GL_ARRAY_BUFFER, sizeof(vertexPositions), vertexPositions, GL_STATIC_DRAW);
+            pGlFunctions->glBindBuffer(GL_ARRAY_BUFFER, 0);
 
             // program
             unsigned int theProgram = 0;
-            GlFunctions.glClearColor(0.0f, 0.0f, 0.0f, 0.0f);
-            GlFunctions.glClear(GL_COLOR_BUFFER_BIT);
-            GlFunctions.glUseProgram(theProgram);
+            pGlFunctions->glClearColor(0.0f, 0.0f, 0.0f, 0.0f);
+            pGlFunctions->glClear(GL_COLOR_BUFFER_BIT);
+            pGlFunctions->glUseProgram(theProgram);
 
             // load vertex data
-            GlFunctions.glBindBuffer(GL_ARRAY_BUFFER, positionBufferObject);
-            GlFunctions.glEnableVertexAttribArray(0);
-            GlFunctions.glVertexAttribPointer(0, 4, GL_FLOAT, GL_FALSE, 0, 0);
-            GlFunctions.glDrawArrays(GL_TRIANGLES, 0, 3);
+            pGlFunctions->glBindBuffer(GL_ARRAY_BUFFER, positionBufferObject);
+            pGlFunctions->glEnableVertexAttribArray(0);
+            pGlFunctions->glVertexAttribPointer(0, 4, GL_FLOAT, GL_FALSE, 0, 0);
+            pGlFunctions->glDrawArrays(GL_TRIANGLES, 0, 3);
 
             // shaders
             std::vector<GLuint> shaderList;
@@ -205,11 +204,11 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 #include "PixelShader_copy.h"
             shaderList.push_back(CreateShader(GL_FRAGMENT_SHADER, strPixelShader_copy));
             theProgram = CreateProgram(shaderList);
-            std::for_each(shaderList.begin(), shaderList.end(), GlFunctions.glDeleteShader);
+            std::for_each(shaderList.begin(), shaderList.end(), pGlFunctions->glDeleteShader);
 
             // render
-            GlFunctions.glDisableVertexAttribArray(0);
-            GlFunctions.glUseProgram(0);
+            pGlFunctions->glDisableVertexAttribArray(0);
+            pGlFunctions->glUseProgram(0);
 
             EndPaint(hWnd, &ps);
         }
@@ -225,21 +224,21 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 
 GLuint CreateShader(GLenum eShaderType, const std::string& strShaderFile)
 {
-    GLuint shader = GlFunctions.glCreateShader(eShaderType);
+    GLuint shader = pGlFunctions->glCreateShader(eShaderType);
     const char* strFileData = strShaderFile.c_str();
-    GlFunctions.glShaderSource(shader, 1, &strFileData, NULL);
+    pGlFunctions->glShaderSource(shader, 1, &strFileData, NULL);
 
-    GlFunctions.glCompileShader(shader);
+    pGlFunctions->glCompileShader(shader);
 
     GLint status;
-    GlFunctions.glGetShaderiv(shader, GL_COMPILE_STATUS, &status);
+    pGlFunctions->glGetShaderiv(shader, GL_COMPILE_STATUS, &status);
     if (status == GL_FALSE)
     {
         GLint infoLogLength;
-        GlFunctions.glGetShaderiv(shader, GL_INFO_LOG_LENGTH, &infoLogLength);
+        pGlFunctions->glGetShaderiv(shader, GL_INFO_LOG_LENGTH, &infoLogLength);
 
         GLchar* strInfoLog = new GLchar[infoLogLength + (GLint)1];
-        GlFunctions.glGetShaderInfoLog(shader, infoLogLength, NULL, strInfoLog);
+        pGlFunctions->glGetShaderInfoLog(shader, infoLogLength, NULL, strInfoLog);
 
         const char* strShaderType = NULL;
         switch (eShaderType)
@@ -258,30 +257,30 @@ GLuint CreateShader(GLenum eShaderType, const std::string& strShaderFile)
 
 GLuint CreateProgram(const std::vector<GLuint>& shaderList)
 {
-    GLuint program = GlFunctions.glCreateProgram();
+    GLuint program = pGlFunctions->glCreateProgram();
 
     for (size_t iLoop = 0; iLoop < shaderList.size(); iLoop++)
     {
-        GlFunctions.glAttachShader(program, shaderList[iLoop]);
+        pGlFunctions->glAttachShader(program, shaderList[iLoop]);
     }
 
-    GlFunctions.glLinkProgram(program);
+    pGlFunctions->glLinkProgram(program);
 
     GLint status;
-    GlFunctions.glGetProgramiv(program, GL_LINK_STATUS, &status);
+    pGlFunctions->glGetProgramiv(program, GL_LINK_STATUS, &status);
     if (status == GL_FALSE)
     {
         GLint infoLogLength;
-        GlFunctions.glGetProgramiv(program, GL_INFO_LOG_LENGTH, &infoLogLength);
+        pGlFunctions->glGetProgramiv(program, GL_INFO_LOG_LENGTH, &infoLogLength);
 
         GLchar* strInfoLog = new GLchar[infoLogLength + (GLint)1];
-        GlFunctions.glGetProgramInfoLog(program, infoLogLength, NULL, strInfoLog);
+        pGlFunctions->glGetProgramInfoLog(program, infoLogLength, NULL, strInfoLog);
         fprintf(stderr, "Linker failure: %s\n", strInfoLog);
         delete[] strInfoLog;
     }
 
     for (size_t iLoop = 0; iLoop < shaderList.size(); iLoop++)
-        GlFunctions.glDetachShader(program, shaderList[iLoop]);
+        pGlFunctions->glDetachShader(program, shaderList[iLoop]);
 
     return program;
 }
@@ -334,6 +333,7 @@ bool OpenOpenGLContext(HDC& _hDC, HWND _hWnd, int& _pixelFormat, HGLRC& _hGLRC)
     SetPixelFormat(hDC, pixelFormat, &pfd);
     hGLRC = wglCreateContext(hDC); // create openGL context
     wglMakeCurrent(hDC, hGLRC);
+    pGlFunctions = new CGlFunctions();
     return true;
 }
 
