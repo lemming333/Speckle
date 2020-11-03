@@ -1,11 +1,10 @@
 // Speckle.cpp : Defines the entry point for the application.
 //
 
-#include <KHR/khrplatform.h>
-#include <GL/glcorearb.h>
-#include <GL/glext.h>
-
+#include <vector>
+#include <algorithm>
 #include <iostream>
+#include <GL/glcorearb.h>
 #include "framework.h"
 #include "Speckle.h"
 #include "CQuat.h"
@@ -23,7 +22,6 @@ HDC hDC;                                        // the main window device contex
 int pixelFormat;                                // the pixel format for the main window
 HGLRC hGLRC;                                    // the OpenGL context handle
 
-
 // Forward declarations of functions included in this code module:
 ATOM                MyRegisterClass(HINSTANCE hInstance);
 BOOL                InitInstance(HINSTANCE, int);
@@ -32,6 +30,13 @@ INT_PTR CALLBACK    About(HWND, UINT, WPARAM, LPARAM);
 bool                OpenOpenGLContext(HDC& _hDC, HWND _hWnd, int& _pixelFormat, HGLRC& _hGLRC);
 void                CloseOpenGLContext(HDC _hDC, HGLRC _hGLRC);
 void*               GetAnyGLFuncAddress(const char* name);
+GLuint              CreateShader(GLenum eShaderType, const std::string& strShaderFile);
+GLuint              CreateProgram(const std::vector<GLuint>& shaderList);
+
+// get functions
+#include "OGLFunctionPointers.h"
+CGlFunctions GlFunctions;
+HMODULE OpenGlModule;
 
 int APIENTRY wWinMain(_In_ HINSTANCE hInstance,
                      _In_opt_ HINSTANCE hPrevInstance,
@@ -166,31 +171,45 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
             PAINTSTRUCT ps;
             HDC hdc = BeginPaint(hWnd, &ps);
 
-            // get functions
-#include "OGLFunctionPointers.h"
+            // set viewport
+            GlFunctions.glViewport(0, 0, 100, 100);//(GLsizei)w, (GLsizei)h);
 
-            // render
+            // allocate vertices
             const float vertexPositions[] = {
                 0.75f, 0.75f, 0.0f, 1.0f,
                 0.75f, -0.75f, 0.0f, 1.0f,
                 -0.75f, -0.75f, 0.0f, 1.0f,
             };
             unsigned int positionBufferObject = 0;
-            glGenBuffers(1, &positionBufferObject);
-            glBindBuffer(GL_ARRAY_BUFFER, positionBufferObject);
-            glBufferData(GL_ARRAY_BUFFER, sizeof(vertexPositions), vertexPositions, GL_STATIC_DRAW);
-            glBindBuffer(GL_ARRAY_BUFFER, 0);
+            GlFunctions.glGenBuffers(1, &positionBufferObject);
+            GlFunctions.glBindBuffer(GL_ARRAY_BUFFER, positionBufferObject);
+            GlFunctions.glBufferData(GL_ARRAY_BUFFER, sizeof(vertexPositions), vertexPositions, GL_STATIC_DRAW);
+            GlFunctions.glBindBuffer(GL_ARRAY_BUFFER, 0);
 
+            // program
             unsigned int theProgram = 0;
-            glClearColor(0.0f, 0.0f, 0.0f, 0.0f);
-            glClear(GL_COLOR_BUFFER_BIT);
-            glUseProgram(theProgram);
-            glBindBuffer(GL_ARRAY_BUFFER, positionBufferObject);
-            glEnableVertexAttribArray(0);
-            glVertexAttribPointer(0, 4, GL_FLOAT, GL_FALSE, 0, 0);
-            glDrawArrays(GL_TRIANGLES, 0, 3);
-            glDisableVertexAttribArray(0);
-            glUseProgram(0);
+            GlFunctions.glClearColor(0.0f, 0.0f, 0.0f, 0.0f);
+            GlFunctions.glClear(GL_COLOR_BUFFER_BIT);
+            GlFunctions.glUseProgram(theProgram);
+
+            // load vertex data
+            GlFunctions.glBindBuffer(GL_ARRAY_BUFFER, positionBufferObject);
+            GlFunctions.glEnableVertexAttribArray(0);
+            GlFunctions.glVertexAttribPointer(0, 4, GL_FLOAT, GL_FALSE, 0, 0);
+            GlFunctions.glDrawArrays(GL_TRIANGLES, 0, 3);
+
+            // shaders
+            std::vector<GLuint> shaderList;
+#include "VertexShader_copy.h"
+            shaderList.push_back(CreateShader(GL_VERTEX_SHADER, strVertexShader_copy));
+#include "PixelShader_copy.h"
+            shaderList.push_back(CreateShader(GL_FRAGMENT_SHADER, strPixelShader_copy));
+            theProgram = CreateProgram(shaderList);
+            std::for_each(shaderList.begin(), shaderList.end(), GlFunctions.glDeleteShader);
+
+            // render
+            GlFunctions.glDisableVertexAttribArray(0);
+            GlFunctions.glUseProgram(0);
 
             EndPaint(hWnd, &ps);
         }
@@ -202,6 +221,69 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
         return DefWindowProc(hWnd, message, wParam, lParam);
     }
     return 0;
+}
+
+GLuint CreateShader(GLenum eShaderType, const std::string& strShaderFile)
+{
+    GLuint shader = GlFunctions.glCreateShader(eShaderType);
+    const char* strFileData = strShaderFile.c_str();
+    GlFunctions.glShaderSource(shader, 1, &strFileData, NULL);
+
+    GlFunctions.glCompileShader(shader);
+
+    GLint status;
+    GlFunctions.glGetShaderiv(shader, GL_COMPILE_STATUS, &status);
+    if (status == GL_FALSE)
+    {
+        GLint infoLogLength;
+        GlFunctions.glGetShaderiv(shader, GL_INFO_LOG_LENGTH, &infoLogLength);
+
+        GLchar* strInfoLog = new GLchar[infoLogLength + (GLint)1];
+        GlFunctions.glGetShaderInfoLog(shader, infoLogLength, NULL, strInfoLog);
+
+        const char* strShaderType = NULL;
+        switch (eShaderType)
+        {
+        case GL_VERTEX_SHADER: strShaderType = "vertex"; break;
+        case GL_GEOMETRY_SHADER: strShaderType = "geometry"; break;
+        case GL_FRAGMENT_SHADER: strShaderType = "fragment"; break;
+        }
+
+        fprintf(stderr, "Compile failure in %s shader:\n%s\n", strShaderType, strInfoLog);
+        delete[] strInfoLog;
+    }
+
+    return shader;
+}
+
+GLuint CreateProgram(const std::vector<GLuint>& shaderList)
+{
+    GLuint program = GlFunctions.glCreateProgram();
+
+    for (size_t iLoop = 0; iLoop < shaderList.size(); iLoop++)
+    {
+        GlFunctions.glAttachShader(program, shaderList[iLoop]);
+    }
+
+    GlFunctions.glLinkProgram(program);
+
+    GLint status;
+    GlFunctions.glGetProgramiv(program, GL_LINK_STATUS, &status);
+    if (status == GL_FALSE)
+    {
+        GLint infoLogLength;
+        GlFunctions.glGetProgramiv(program, GL_INFO_LOG_LENGTH, &infoLogLength);
+
+        GLchar* strInfoLog = new GLchar[infoLogLength + (GLint)1];
+        GlFunctions.glGetProgramInfoLog(program, infoLogLength, NULL, strInfoLog);
+        fprintf(stderr, "Linker failure: %s\n", strInfoLog);
+        delete[] strInfoLog;
+    }
+
+    for (size_t iLoop = 0; iLoop < shaderList.size(); iLoop++)
+        GlFunctions.glDetachShader(program, shaderList[iLoop]);
+
+    return program;
 }
 
 // Message handler for about box.
@@ -269,10 +351,18 @@ void* GetAnyGLFuncAddress(const char* name)
         (p == (void*)0x1) || (p == (void*)0x2) || (p == (void*)0x3) ||
         (p == (void*)-1))
     {
-        HMODULE module = LoadLibraryA("opengl32.dll");
-        if (module != 0)
+        if (OpenGlModule == 0)
         {
-            p = (void*)GetProcAddress(module, name);
+            OpenGlModule = LoadLibraryA("opengl32.dll");
+        }
+
+        if (OpenGlModule != 0)
+        {
+            p = (void*)GetProcAddress(OpenGlModule, name);
+        }
+        else
+        {
+            std::cerr << "Could not get pointer to OGL function " << name << std::endl;
         }
     }
 
