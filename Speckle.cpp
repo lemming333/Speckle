@@ -210,6 +210,8 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
             pGlFunctions->glDisableVertexAttribArray(0);
             pGlFunctions->glUseProgram(0);
 
+            SwapBuffers(hdc);
+
             EndPaint(hWnd, &ps);
         }
         break;

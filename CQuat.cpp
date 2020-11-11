@@ -15,7 +15,7 @@ CQuat::CQuat(double w, double i, double j, double k)
 CQuat::~CQuat()
 {}
 
-CQuat& CQuat::add(CQuat& value)
+CQuat CQuat::add(CQuat& value)
 {
 	CQuat result(value.mQuat[0] + mQuat[0], 
 		value.mQuat[1] + mQuat[1], 
