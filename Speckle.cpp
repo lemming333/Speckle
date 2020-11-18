@@ -14,13 +14,13 @@ using namespace std;
 constexpr auto MAX_LOADSTRING = 100;
 
 // Global Variables:
-HINSTANCE hInst;                                // current instance
+HINSTANCE hInst = 0;                            // current instance
 WCHAR szTitle[MAX_LOADSTRING];                  // The title bar text
 WCHAR szWindowClass[MAX_LOADSTRING];            // the main window class name
-HWND hWnd;                                      // the main window handle
-HDC hDC;                                        // the main window device context
-int pixelFormat;                                // the pixel format for the main window
-HGLRC hGLRC;                                    // the OpenGL context handle
+HWND hWnd = 0;                                  // the main window handle
+HDC hDC = 0;                                    // the main window device context
+int pixelFormat = 0;                            // the pixel format for the main window
+HGLRC hGLRC = 0;                                // the OpenGL context handle
 
 // Forward declarations of functions included in this code module:
 ATOM                MyRegisterClass(HINSTANCE hInstance);
@@ -52,7 +52,6 @@ int APIENTRY wWinMain(_In_ HINSTANCE hInstance,
     MyRegisterClass(hInstance);
 
     // Perform application initialization:
-    OpenOpenGLContext(hDC, hWnd, pixelFormat, hGLRC);
     if (!InitInstance (hInstance, nCmdShow))
     {
         return FALSE;
@@ -127,6 +126,8 @@ BOOL InitInstance(HINSTANCE hInstance, int nCmdShow)
       return FALSE;
    }
 
+   OpenOpenGLContext(hDC, hWnd, pixelFormat, hGLRC);
+
    // put up the main window
    ShowWindow(hWnd, nCmdShow);
    UpdateWindow(hWnd);
@@ -171,13 +172,18 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
             HDC hdc = BeginPaint(hWnd, &ps);
 
             // set viewport
-            pGlFunctions->glViewport(0, 0, 100, 100);//(GLsizei)w, (GLsizei)h);
+            pGlFunctions->glViewport(0, 0, 1136, 564);//(GLsizei)w, (GLsizei)h);
 
             // allocate vertices
+            //const float vertexPositions[] = {
+            //    0.75f, 0.75f, 0.0f, 1.0f,
+            //    0.75f, -0.75f, 0.0f, 1.0f,
+            //    -0.75f, -0.75f, 0.0f, 1.0f,
+            //};
             const float vertexPositions[] = {
-                0.75f, 0.75f, 0.0f, 1.0f,
-                0.75f, -0.75f, 0.0f, 1.0f,
-                -0.75f, -0.75f, 0.0f, 1.0f,
+                1.0f, 1.0f, 0.0f, 1.0f,
+                1.0f, -1.0f, 0.0f, 1.0f,
+                -1.0f, -1.0f, 0.0f, 1.0f,
             };
             unsigned int positionBufferObject = 0;
             pGlFunctions->glGenBuffers(1, &positionBufferObject);
@@ -185,32 +191,34 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
             pGlFunctions->glBufferData(GL_ARRAY_BUFFER, sizeof(vertexPositions), vertexPositions, GL_STATIC_DRAW);
             pGlFunctions->glBindBuffer(GL_ARRAY_BUFFER, 0);
 
-            // program
-            unsigned int theProgram = 0;
-            pGlFunctions->glClearColor(0.0f, 0.0f, 0.0f, 0.0f);
-            pGlFunctions->glClear(GL_COLOR_BUFFER_BIT);
-            pGlFunctions->glUseProgram(theProgram);
-
             // load vertex data
             pGlFunctions->glBindBuffer(GL_ARRAY_BUFFER, positionBufferObject);
             pGlFunctions->glEnableVertexAttribArray(0);
             pGlFunctions->glVertexAttribPointer(0, 4, GL_FLOAT, GL_FALSE, 0, 0);
-            pGlFunctions->glDrawArrays(GL_TRIANGLES, 0, 3);
 
-            // shaders
+            // create shaders
             std::vector<GLuint> shaderList;
 #include "VertexShader_copy.h"
             shaderList.push_back(CreateShader(GL_VERTEX_SHADER, strVertexShader_copy));
 #include "PixelShader_copy.h"
             shaderList.push_back(CreateShader(GL_FRAGMENT_SHADER, strPixelShader_copy));
-            theProgram = CreateProgram(shaderList);
-            std::for_each(shaderList.begin(), shaderList.end(), pGlFunctions->glDeleteShader);
+            unsigned int theProgram = CreateProgram(shaderList);
 
-            // render
+            // add clear buffer command
+            pGlFunctions->glClearColor(0.0f, 0.0f, 0.0f, 0.0f);
+            pGlFunctions->glClear(GL_COLOR_BUFFER_BIT);
+
+            // add draw command
+            pGlFunctions->glDrawArrays(GL_TRIANGLES, 0, 3);
+
+            // run program and swap result to display
+            pGlFunctions->glUseProgram(theProgram);
+            SwapBuffers(hdc);
+
+            // clean up
+            std::for_each(shaderList.begin(), shaderList.end(), pGlFunctions->glDeleteShader);
             pGlFunctions->glDisableVertexAttribArray(0);
             pGlFunctions->glUseProgram(0);
-
-            SwapBuffers(hdc);
 
             EndPaint(hWnd, &ps);
         }
