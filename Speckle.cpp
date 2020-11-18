@@ -172,7 +172,9 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
             HDC hdc = BeginPaint(hWnd, &ps);
 
             // set viewport
-            pGlFunctions->glViewport(0, 0, 1136, 564);//(GLsizei)w, (GLsizei)h);
+            RECT clientRect{ 0,0,0,0 };
+            bool success = GetClientRect(hWnd, &clientRect);
+            pGlFunctions->glViewport(0, 0, clientRect.right, clientRect.bottom);
 
             // allocate vertices
             //const float vertexPositions[] = {
@@ -202,7 +204,7 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
             shaderList.push_back(CreateShader(GL_VERTEX_SHADER, strVertexShader_copy));
 #include "PixelShader_copy.h"
             shaderList.push_back(CreateShader(GL_FRAGMENT_SHADER, strPixelShader_copy));
-            unsigned int theProgram = CreateProgram(shaderList);
+            unsigned int Shaders = CreateProgram(shaderList);
 
             // add clear buffer command
             pGlFunctions->glClearColor(0.0f, 0.0f, 0.0f, 0.0f);
@@ -212,7 +214,7 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
             pGlFunctions->glDrawArrays(GL_TRIANGLES, 0, 3);
 
             // run program and swap result to display
-            pGlFunctions->glUseProgram(theProgram);
+            pGlFunctions->glUseProgram(Shaders);
             SwapBuffers(hdc);
 
             // clean up
@@ -247,7 +249,7 @@ GLuint CreateShader(GLenum eShaderType, const std::string& strShaderFile)
         GLint infoLogLength;
         pGlFunctions->glGetShaderiv(shader, GL_INFO_LOG_LENGTH, &infoLogLength);
 
-        GLchar* strInfoLog = new GLchar[infoLogLength + (GLint)1];
+        GLchar* strInfoLog = new GLchar[(int)(infoLogLength + (GLint)1)];
         pGlFunctions->glGetShaderInfoLog(shader, infoLogLength, NULL, strInfoLog);
 
         const char* strShaderType = NULL;
@@ -283,7 +285,7 @@ GLuint CreateProgram(const std::vector<GLuint>& shaderList)
         GLint infoLogLength;
         pGlFunctions->glGetProgramiv(program, GL_INFO_LOG_LENGTH, &infoLogLength);
 
-        GLchar* strInfoLog = new GLchar[infoLogLength + (GLint)1];
+        GLchar* strInfoLog = new GLchar[(int)(infoLogLength + (GLint)1)];
         pGlFunctions->glGetProgramInfoLog(program, infoLogLength, NULL, strInfoLog);
         fprintf(stderr, "Linker failure: %s\n", strInfoLog);
         delete[] strInfoLog;
