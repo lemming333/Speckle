@@ -159,7 +159,6 @@
   <ItemGroup>
     <ClCompile Include="COpenGL.cpp" />
     <ClCompile Include="OGLFunctionPointers.cpp" />
-    <ClCompile Include="Source.cpp" />
     <ClCompile Include="Speckle.cpp" />
   </ItemGroup>
   <ItemGroup>
