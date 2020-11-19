@@ -73,6 +73,7 @@ int APIENTRY wWinMain(_In_ HINSTANCE hInstance,
         }
     }
 
+    pGlFunctions->glUseProgram(0);
     CloseOpenGLContext(hDC, hGLRC);
 
     return (int) msg.wParam;
@@ -131,6 +132,7 @@ BOOL InitInstance(HINSTANCE hInstance, int nCmdShow)
    OpenOpenGLContext(hDC, hWnd, pixelFormat, hGLRC);
 
    // put up the main window
+   RenderTheWindow(hDC, hWnd);
    ShowWindow(hWnd, nCmdShow);
    UpdateWindow(hWnd);
 
@@ -387,5 +389,4 @@ void RenderTheWindow(HDC hdc, HWND hWnd)
     // clean up
     std::for_each(shaderList.begin(), shaderList.end(), pGlFunctions->glDeleteShader);
     pGlFunctions->glDisableVertexAttribArray(0);
-    //pGlFunctions->glUseProgram(0);
 }
