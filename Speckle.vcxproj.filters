@@ -27,9 +27,21 @@
     <ClInclude Include="Speckle.h">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="COpenGL.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="Speckle.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="COpenGL.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="Source.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="OGLFunctionPointers.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
   </ItemGroup>
