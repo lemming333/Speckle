@@ -7,7 +7,6 @@
 #include <GL/glcorearb.h>
 #include "framework.h"
 #include "Speckle.h"
-#include "CQuat.h"
 
 using namespace std;
 
