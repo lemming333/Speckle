@@ -21,6 +21,7 @@ HWND hWnd = 0;                                  // the main window handle
 HDC hDC = 0;                                    // the main window device context
 int pixelFormat = 0;                            // the pixel format for the main window
 HGLRC hGLRC = 0;                                // the OpenGL context handle
+bool bProgramReady = false;                     // Is the program in place?
 
 // Forward declarations of functions included in this code module:
 ATOM                MyRegisterClass(HINSTANCE hInstance);
@@ -32,6 +33,7 @@ void                CloseOpenGLContext(HDC _hDC, HGLRC _hGLRC);
 void*               GetAnyGLFuncAddress(const char* name);
 GLuint              CreateShader(GLenum eShaderType, const std::string& strShaderFile);
 GLuint              CreateProgram(const std::vector<GLuint>& shaderList);
+void                RenderTheWindow(HDC hdc, HWND hWnd);
 
 // get functions
 #include "OGLFunctionPointers.h"
@@ -171,56 +173,7 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
             PAINTSTRUCT ps;
             HDC hdc = BeginPaint(hWnd, &ps);
 
-            // set viewport
-            RECT clientRect{ 0,0,0,0 };
-            bool success = GetClientRect(hWnd, &clientRect);
-            pGlFunctions->glViewport(0, 0, clientRect.right, clientRect.bottom);
-
-            // allocate vertices
-            //const float vertexPositions[] = {
-            //    0.75f, 0.75f, 0.0f, 1.0f,
-            //    0.75f, -0.75f, 0.0f, 1.0f,
-            //    -0.75f, -0.75f, 0.0f, 1.0f,
-            //};
-            const float vertexPositions[] = {
-                1.0f, 1.0f, 0.0f, 1.0f,
-                1.0f, -1.0f, 0.0f, 1.0f,
-                -1.0f, -1.0f, 0.0f, 1.0f,
-            };
-            unsigned int positionBufferObject = 0;
-            pGlFunctions->glGenBuffers(1, &positionBufferObject);
-            pGlFunctions->glBindBuffer(GL_ARRAY_BUFFER, positionBufferObject);
-            pGlFunctions->glBufferData(GL_ARRAY_BUFFER, sizeof(vertexPositions), vertexPositions, GL_STATIC_DRAW);
-            pGlFunctions->glBindBuffer(GL_ARRAY_BUFFER, 0);
-
-            // load vertex data
-            pGlFunctions->glBindBuffer(GL_ARRAY_BUFFER, positionBufferObject);
-            pGlFunctions->glEnableVertexAttribArray(0);
-            pGlFunctions->glVertexAttribPointer(0, 4, GL_FLOAT, GL_FALSE, 0, 0);
-
-            // create shaders
-            std::vector<GLuint> shaderList;
-#include "VertexShader_copy.h"
-            shaderList.push_back(CreateShader(GL_VERTEX_SHADER, strVertexShader_copy));
-#include "PixelShader_copy.h"
-            shaderList.push_back(CreateShader(GL_FRAGMENT_SHADER, strPixelShader_copy));
-            unsigned int Shaders = CreateProgram(shaderList);
-
-            // add clear buffer command
-            pGlFunctions->glClearColor(0.0f, 0.0f, 0.0f, 0.0f);
-            pGlFunctions->glClear(GL_COLOR_BUFFER_BIT);
-
-            // add draw command
-            pGlFunctions->glDrawArrays(GL_TRIANGLES, 0, 3);
-
-            // run program and swap result to display
-            pGlFunctions->glUseProgram(Shaders);
-            SwapBuffers(hdc);
-
-            // clean up
-            std::for_each(shaderList.begin(), shaderList.end(), pGlFunctions->glDeleteShader);
-            pGlFunctions->glDisableVertexAttribArray(0);
-            pGlFunctions->glUseProgram(0);
+            RenderTheWindow(hdc, hWnd);
 
             EndPaint(hWnd, &ps);
         }
@@ -379,4 +332,60 @@ void* GetAnyGLFuncAddress(const char* name)
     }
 
     return p;
+}
+
+void RenderTheWindow(HDC hdc, HWND hWnd)
+{
+    // set viewport
+    RECT clientRect{ 0,0,0,0 };
+    bool success = GetClientRect(hWnd, &clientRect);
+    pGlFunctions->glViewport(0, 0, clientRect.right, clientRect.bottom);
+
+    //////////////////////////////////////////////
+    // first draw call - clear display buffer
+    //////////////////////////////////////////////
+    pGlFunctions->glClearColor(0.0f, 0.0f, 0.0f, 0.0f);
+    pGlFunctions->glClear(GL_COLOR_BUFFER_BIT);
+
+    //////////////////////////////////////////////
+    // second draw call - draw a triangle
+    //////////////////////////////////////////////
+    // allocate vertices
+    const float vertexPositions[] = {
+        1.0f, 1.0f, 0.0f, 1.0f,
+        1.0f, -1.0f, 0.0f, 1.0f,
+        -1.0f, -1.0f, 0.0f, 1.0f,
+    };
+    unsigned int positionBufferObject = 0;
+    pGlFunctions->glGenBuffers(1, &positionBufferObject);
+    pGlFunctions->glBindBuffer(GL_ARRAY_BUFFER, positionBufferObject);
+    pGlFunctions->glBufferData(GL_ARRAY_BUFFER, sizeof(vertexPositions), vertexPositions, GL_STATIC_DRAW);
+    pGlFunctions->glBindBuffer(GL_ARRAY_BUFFER, 0);
+
+    // load vertex data
+    pGlFunctions->glBindBuffer(GL_ARRAY_BUFFER, positionBufferObject);
+    pGlFunctions->glEnableVertexAttribArray(0);
+    pGlFunctions->glVertexAttribPointer(0, 4, GL_FLOAT, GL_FALSE, 0, 0);
+
+    // Add vertex list to draw call program
+    pGlFunctions->glDrawArrays(GL_TRIANGLES, 0, 3);
+
+    // load shaders
+    std::vector<GLuint> shaderList;
+#include "VertexShader_copy.h"
+    shaderList.push_back(CreateShader(GL_VERTEX_SHADER, strVertexShader_copy));
+#include "PixelShader_copy.h"
+    shaderList.push_back(CreateShader(GL_FRAGMENT_SHADER, strPixelShader_copy));
+    unsigned int program = CreateProgram(shaderList);
+
+    // run second draw call program instead of default
+    pGlFunctions->glUseProgram(program);
+
+    // swap result to display
+    SwapBuffers(hdc);
+
+    // clean up
+    std::for_each(shaderList.begin(), shaderList.end(), pGlFunctions->glDeleteShader);
+    pGlFunctions->glDisableVertexAttribArray(0);
+    //pGlFunctions->glUseProgram(0);
 }
